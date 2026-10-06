@@ -2081,7 +2081,7 @@ placeholder="🔎 Search by element name, symbol or atomic number...">
 Tell us what you think about Chemistry Formula Master.
 </p>
 
-<form class="feedback-form" name="chemistry-feedback" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+<form class="feedback-form" name="chemistry-feedback" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/thank-you.html">
 
 <input type="hidden" name="form-name" value="chemistry-feedback">
 
@@ -2129,6 +2129,12 @@ How would you rate the game?
 <input id="feedbackName" type="text" name="name" placeholder="Your name (optional)">
 
 <button type="submit">🚀 Submit Feedback</button>
+    <div id="feedbackSuccess" style="display:none;margin-top:18px;padding:15px;border-radius:14px;background:#16213a;color:#7CFFB2;font-weight:bold;">
+🎉 Thank you for your feedback!<br>
+<span style="font-size:14px;color:#ccc;font-weight:normal;">
+Your feedback helps us make ChemMind better 🧪✨
+</span>
+</div>
 
 <p class="feedback-note">
 Your feedback will be collected through the website's Netlify form so the developer can review it.
@@ -2196,6 +2202,45 @@ Correct Answers:
 
 
 <script>
+    const feedbackForm = document.querySelector('.feedback-form');
+const feedbackSuccess = document.getElementById('feedbackSuccess');
+
+if (feedbackForm) {
+    feedbackForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const submitButton = feedbackForm.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.textContent = 'Sending... ⏳';
+
+        const formData = new FormData(feedbackForm);
+
+        try {
+            await fetch('/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams(formData).toString()
+            });
+
+            feedbackForm.reset();
+            feedbackSuccess.style.display = 'block';
+
+            submitButton.textContent = '✅ Submitted!';
+            
+            setTimeout(() => {
+                submitButton.disabled = false;
+                submitButton.textContent = '🚀 Submit Feedback';
+            }, 3000);
+
+        } catch (error) {
+            submitButton.disabled = false;
+            submitButton.textContent = '🚀 Submit Feedback';
+            alert('Something went wrong. Please try again.');
+        }
+    });
+}
 
 /* =================================
 GAME VARIABLES
