@@ -892,10 +892,20 @@ input,select{
     opacity:.45;
     transition:.2s;
 }
-.rating-option label:hover,
-.rating-option input:checked + label{
+.rating-option label:hover{
     opacity:1;
     transform:scale(1.12);
+}
+
+/* Highlight selected star AND all stars before it */
+.rating-row:has(#star1:checked) .rating-option:nth-child(-n+1) label,
+.rating-row:has(#star2:checked) .rating-option:nth-child(-n+2) label,
+.rating-row:has(#star3:checked) .rating-option:nth-child(-n+3) label,
+.rating-row:has(#star4:checked) .rating-option:nth-child(-n+4) label,
+.rating-row:has(#star5:checked) .rating-option:nth-child(-n+5) label{
+    opacity:1;
+    transform:scale(1.12);
+}
 }
 .feedback-form textarea{
     width:100%;
