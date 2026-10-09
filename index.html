@@ -2556,6 +2556,7 @@ if (!result?.answer || !result.answer.trim()) {
           eq: sectionName === 'FORMULA' ? text : ''
         };
       });
+   
     } else {
       // Still show the AI response if it doesn't follow the labels
       slides = [{
@@ -2565,23 +2566,20 @@ if (!result?.answer || !result.answer.trim()) {
       }];
     }
 
-    videoSlides = slides;
-    videoIndex = 0;
-
-    title.textContent = '🎬 ' + topic + ' • ' + level;
-    emoji.textContent = '🧪';
-
-    renderVideoSlide();
-    document.getElementById('videoQuiz').style.display = 'none';
-
   } catch (error) {
+    console.error('ChemMind AI lesson error:', error);
+
     title.textContent = '⚠️ AI Lesson Error';
     slideTitle.textContent = 'Could not generate the lesson';
     slideText.textContent =
-      error.message +
-      '\n\nCheck that the Netlify function is deployed and GEMINI_API_KEY is configured correctly.';
+      error?.message || 'Please check the AI connection and try again.';
+
     equation.textContent = '';
     equation.style.display = 'none';
+    emoji.textContent = '⚠️';
+
+    document.getElementById('videoQuiz').style.display = 'none';
+    return;
   }
 }
 function renderVideoSlide(){if(!videoSlides.length)return; const x=videoSlides[videoIndex]; stopVideoVoice(); document.getElementById('videoSlideTitle').textContent=x.title; document.getElementById('videoSlideText').textContent=x.text; const eq=document.getElementById('videoEquation'); eq.textContent=x.eq||''; eq.style.display=x.eq?'inline-block':'none'; document.getElementById('videoCounter').textContent=`Scene ${videoIndex+1} / ${videoSlides.length}`; document.getElementById('videoProgress').style.width=((videoIndex+1)/videoSlides.length*100)+'%'; updateReactionVisual(x.title,x.text); if(videoIndex===videoSlides.length-1) showVideoQuiz(); else document.getElementById('videoQuiz').style.display='none';}
