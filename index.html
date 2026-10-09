@@ -2424,7 +2424,153 @@ const videoDemo={
   'Acids and Bases':{emoji:'🧪',slides:[['Concept','Acids and bases can be described using different theories, including Arrhenius, Brønsted–Lowry and Lewis.','Acid/base theory'],['Arrhenius','An Arrhenius acid increases H⁺ in aqueous solution, while an Arrhenius base increases OH⁻.','Acid → H⁺   |   Base → OH⁻'],['Brønsted–Lowry','An acid donates a proton and a base accepts a proton.','Acid = proton donor'],['Board Answer','When a question says explain a theory, state the definition and give a suitable example.','Definition + example'],['Quick Check','What does a Brønsted–Lowry acid donate?','A proton (H⁺)']]},
   'Chemical Bonding':{emoji:'🔗',slides:[['Concept','A chemical bond is an attractive force that holds particles together in a substance.','Bonding → stability'],['Ionic Bond','Ionic bonding involves electrostatic attraction between oppositely charged ions.','Na⁺  ↔  Cl⁻'],['Covalent Bond','Covalent bonding involves sharing electron pairs between atoms.','Shared electrons'],['Board Answer','Name the bond, describe how electrons behave, and give an example when required.','Type + electron behavior + example'],['Quick Check','What happens to electrons in a covalent bond?','They are shared']]}};
 function setVideoTopic(t){document.getElementById('videoTopic').value=t}
-function generateVideoLesson(){const topic=(document.getElementById('videoTopic').value||'').trim()||'Chemistry'; const data=videoDemo[topic]||{emoji:'🧠',slides:[['Topic Introduction',`This is the ChemMind lesson space for “${topic}”.`,'' ],['Concept',`AI will generate the definition, explanation and visual sequence for ${topic} when the secure AI backend is connected.`,'' ],['Formula / Equation','The AI lesson will place the relevant formula or balanced equation here.',''],['Board Answer','The AI will turn the concept into board-style wording with important keywords.',''],['Quick Check',`What is the most important idea you know about ${topic}?`,'']]}; videoSlides=data.slides.map(x=>({title:x[0],text:x[1],eq:x[2]})); videoIndex=0; document.getElementById('videoLessonTitle').textContent='🎬 '+topic+' • '+document.getElementById('videoLevel').value; document.getElementById('videoEmoji').textContent=data.emoji; renderVideoSlide(); document.getElementById('videoQuiz').style.display='none';}
+
+async function generateVideoLesson() {
+  const topic = (
+    document.getElementById('videoTopic').value || ''
+  ).trim() || 'Chemistry';
+
+  const level =
+    document.getElementById('videoLevel').value || 'Class 9';
+
+  const title = document.getElementById('videoLessonTitle');
+  const slideTitle = document.getElementById('videoSlideTitle');
+  const slideText = document.getElementById('videoSlideText');
+  const equation = document.getElementById('videoEquation');
+  const emoji = document.getElementById('videoEmoji');
+
+  // Stop any previous lesson playback
+  if (videoTimer) {
+    clearInterval(videoTimer);
+    videoTimer = null;
+  }
+  stopVideoVoice();
+
+  title.textContent = '⏳ Creating AI lesson: ' + topic;
+  slideTitle.textContent = 'Connecting to ChemMind AI...';
+  slideText.textContent =
+    'Please wait while AI prepares your explanation, formula, and board answer.';
+  equation.textContent = '';
+  equation.style.display = 'none';
+  emoji.textContent = '🧪';
+  document.getElementById('videoQuiz').style.display = 'none';
+
+  const question = `
+Create a chemistry video lesson about: ${topic}
+Student level: ${level}
+Language: Easy Urdu-English mix.
+
+Return exactly these five labelled sections:
+INTRO: A simple introduction to the topic.
+CONCEPT: A correct, clear explanation with an example.
+FORMULA: The relevant chemical formula or balanced equation.
+BOARD ANSWER: A concise exam-style answer with important keywords.
+QUICK CHECK: One question to test understanding.
+
+Use correct chemistry. Balance equations where appropriate.
+If no specific equation applies, explain why in the FORMULA section.
+Do not leave any section blank. Do not invent chemical reactions.
+Keep each section suitable for one lesson slide.
+  `.trim();
+
+  try {
+    const response = await fetch('/.netlify/functions/chem-ai', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        question: question,
+        mode: 'video'
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result.error || 'The AI request failed. Please try again.'
+      );
+    }
+
+    if (!result.answer || !result.answer.trim()) {
+      throw new Error('The AI returned an empty answer.');
+    }
+
+    const answer = result.answer.trim();
+
+    const labels = [
+      ['Topic Introduction', 'INTRO'],
+      ['Concept Explanation', 'CONCEPT'],
+      ['Formula / Equation', 'FORMULA'],
+      ['Board Answer', 'BOARD ANSWER'],
+      ['Quick Check', 'QUICK CHECK']
+    ];
+
+    const escapedLabels = labels
+      .map(item => item[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('|');
+
+    const sectionRegex = new RegExp(
+      '^\\s*(' + escapedLabels + ')\\s*:\\s*',
+      'gim'
+    );
+
+    const matches = [...answer.matchAll(sectionRegex)];
+    let slides = [];
+
+    if (matches.length > 0) {
+      slides = matches.map((match, index) => {
+        const start = match.index + match[0].length;
+        const end = index + 1 < matches.length
+          ? matches[index + 1].index
+          : answer.length;
+
+        const sectionName = match[1].toUpperCase();
+        const text = answer.slice(start, end).trim();
+
+        const titles = {
+          'INTRO': 'Topic Introduction',
+          'CONCEPT': 'Concept Explanation',
+          'FORMULA': 'Formula / Equation',
+          'BOARD ANSWER': 'Board Answer',
+          'QUICK CHECK': 'Quick Check'
+        };
+
+        return {
+          title: titles[sectionName] || sectionName,
+          text: text || 'Review this section with your teacher.',
+          eq: sectionName === 'FORMULA' ? text : ''
+        };
+      });
+    } else {
+      // Still show the AI response if it doesn't follow the labels
+      slides = [{
+        title: 'AI Explanation',
+        text: answer,
+        eq: ''
+      }];
+    }
+
+    videoSlides = slides;
+    videoIndex = 0;
+
+    title.textContent = '🎬 ' + topic + ' • ' + level;
+    emoji.textContent = '🧪';
+
+    renderVideoSlide();
+    document.getElementById('videoQuiz').style.display = 'none';
+
+  } catch (error) {
+    title.textContent = '⚠️ AI Lesson Error';
+    slideTitle.textContent = 'Could not generate the lesson';
+    slideText.textContent =
+      error.message +
+      '\n\nCheck that the Netlify function is deployed and GEMINI_API_KEY is configured correctly.';
+    equation.textContent = '';
+    equation.style.display = 'none';
+  }
+}
 function renderVideoSlide(){if(!videoSlides.length)return; const x=videoSlides[videoIndex]; stopVideoVoice(); document.getElementById('videoSlideTitle').textContent=x.title; document.getElementById('videoSlideText').textContent=x.text; const eq=document.getElementById('videoEquation'); eq.textContent=x.eq||''; eq.style.display=x.eq?'inline-block':'none'; document.getElementById('videoCounter').textContent=`Scene ${videoIndex+1} / ${videoSlides.length}`; document.getElementById('videoProgress').style.width=((videoIndex+1)/videoSlides.length*100)+'%'; updateReactionVisual(x.title,x.text); if(videoIndex===videoSlides.length-1) showVideoQuiz(); else document.getElementById('videoQuiz').style.display='none';}
 function updateReactionVisual(title,text){const scene=document.getElementById('videoReactionScene'); const caption=document.getElementById('videoReactionCaption'); const spark=document.getElementById('videoSpark'); if(!scene)return; if(/acid|base|neutral/i.test(title+' '+text)){scene.innerHTML='<div class="chem-beaker"><div class="chem-liquid acid"></div><span class="chem-drop"></span><div class="chem-bubbles"><i></i><i></i><i></i></div></div><div class="chem-plus">+</div><div class="chem-beaker"><div class="chem-liquid base"></div><span class="chem-drop d2"></span><div class="chem-bubbles"><i></i><i></i><i></i></div></div><div class="chem-spark">✨</div>'; caption.textContent='Acid + base visual: colored solutions mix and form a new result'; return;} if(/bond|ionic|covalent/i.test(title+' '+text)){scene.innerHTML='<div class="chem-spark">🔵</div><div class="chem-plus">→</div><div class="chem-spark">🟠</div><div class="chem-plus">→</div><div class="chem-spark">🔵🟠</div>'; caption.textContent='Electron transfer / sharing visual'; return;} if(/ionization|electron/i.test(title+' '+text)){scene.innerHTML='<div class="chem-spark">⚛️</div><div class="chem-plus">→</div><div class="chem-spark">💫</div><div class="chem-plus">+</div><div class="chem-spark">⚡</div>'; caption.textContent='Electron removal animation: atom → electron → ion + energy'; return;} scene.innerHTML='<div class="chem-beaker"><div class="chem-liquid"></div><div class="chem-bubbles"><i></i><i></i><i></i></div></div><div class="chem-plus">→</div><div class="chem-spark">✨</div><div class="chem-plus">→</div><div class="chem-beaker"><div class="chem-liquid base"></div><div class="chem-bubbles"><i></i><i></i><i></i></div></div>'; caption.textContent='Animated chemistry preview: colored liquid, bubbles and transformation';}
 function nextVideoSlide(){if(!videoSlides.length)return; videoIndex=(videoIndex+1)%videoSlides.length; renderVideoSlide()}
