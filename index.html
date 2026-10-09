@@ -2485,18 +2485,31 @@ Keep each section suitable for one lesson slide.
       })
     });
 
-    const result = await response.json();
+  
+const raw = await response.text();
 
-    if (!response.ok) {
-      throw new Error(
-        result.error || 'The AI request failed. Please try again.'
-      );
-    }
+let result;
 
-    if (!result.answer || !result.answer.trim()) {
-      throw new Error('The AI returned an empty answer.');
-    }
+try {
+  result = raw ? JSON.parse(raw) : null;
+} catch {
+  throw new Error(
+    `Netlify returned non-JSON. HTTP ${response.status}. ` +
+    `Response: ${raw.slice(0, 300) || '(empty response)'}`
+  );
+}
 
+if (!response.ok) {
+  throw new Error(
+    result?.error || `AI request failed. HTTP ${response.status}`
+  );
+}
+
+if (!result?.answer || !result.answer.trim()) {
+  throw new Error(
+    'AI returned no answer. Check the Netlify function logs.'
+  );
+}
     const answer = result.answer.trim();
 
     const labels = [
